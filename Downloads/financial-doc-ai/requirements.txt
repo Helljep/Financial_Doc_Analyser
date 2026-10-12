@@ -1,0 +1,9 @@
+streamlit
+google-genai
+pydantic
+PyPDF2
+tableauhyperapi
+matplotlib
+seaborn
+fpdf2
+tableauhyperapi
