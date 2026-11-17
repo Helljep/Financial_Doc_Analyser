@@ -1,0 +1,162 @@
+SUNRISE BANK LTD  --  STATEMENT OF ACCOUNT
+Acct No: XXXX-XXXX-4821    Holder: J. PAWARE
+Period: 01/01/2026 to 30/06/2026
+Opening Balance:   Rs. 5,000.00
+
+DATE          NARRATION                         DEBIT        CREDIT       BALANCE
+--------------------------------------------------------------------------------
+11/01/2026    NETFLIX.COM                       379.55                 4,620.45
+02/01/2026    Swiggy Order                      746.30                 3,874.15 *
+4 Jan 2026    Apollo Pharmacy                   541.20                 3,332.95 *
+17-01-26      BigBasket                          72.25                 3,260.70  ref#5121818
+14/01/2026    UPI/Rahul S                                   408.32     3,669.02  ref#8250736
+14 Jan 2026   UBER *TRIP                        751.09                 2,917.93 *
+04-01-26      Zomato                            582.34                 2,335.59
+19-01-26      UBER *TRIP                        536.31                 1,799.28
+13-01-26      UBER *TRIP                        879.58                   919.70
+02/01/2026    Myntra                            778.28                   141.42
+10 Jan 2026   UPI/Rahul S                                   515.28       656.70  ref#5288153
+10/01/2026    Myntra                            741.87                   -85.17
+6 Jan 2026    STARBUCKS #4412                   540.18                  -625.35 *
+21 Jan 2026   BigBasket                         360.26                  -985.61 *
+18/01/2026    Swiggy Order                      525.36                -1,510.97
+20-01-26      BigBasket                         466.92                -1,977.89
+18-01-26      UPI/Rahul S                                 1,889.13       -88.76
+15-01-26      Apollo Pharmacy                   297.80                  -386.56
+26 Jan 2026   Shell Fuel Stn                    641.14                -1,027.70
+08/01/2026    Swiggy Order                      534.00                -1,561.70
+17-01-26      Rent - Sunrise Apts               792.62                -2,354.32
+24-01-26      Interest Credit                             3,921.69     1,567.37
+04-01-26      IKEA                              399.59                 1,167.78 *
+25 Jan 2026   Airtel Postpaid                   170.71                   997.07
+16 Jan 2026   UPI/Rahul S                                 2,689.45     3,686.52
+25-02-26      Myntra                            532.80                 3,153.72
+27-02-26      Airtel Postpaid                   332.51                 2,821.21  ref#1699055
+12/02/2026    Rent - Sunrise Apts               538.71                 2,282.50
+15 Feb 2026   Swiggy Order                      762.37                 1,520.13
+9 Feb 2026    Rent - Sunrise Apts               639.46                   880.67
+3 Feb 2026    UBER *TRIP                        668.80                   211.87
+10 Feb 2026   Interest Credit                             1,573.88     1,785.75
+22-02-26      Apollo Pharmacy                    59.40                 1,726.35
+15 Feb 2026   Apollo Pharmacy                   184.52                 1,541.83  ref#9606396
+4 Feb 2026    Rent - Sunrise Apts                90.70                 1,451.13
+25 Feb 2026   Electricity Board                 151.23                 1,299.90 *
+08/02/2026    SALARY ACME CORP                            3,500.00     4,799.90
+28/02/2026    Rent - Sunrise Apts               109.30                 4,690.60
+15 Feb 2026   SALARY ACME CORP                            3,500.00     8,190.60
+05-02-26      UPI/Rahul S                       279.44                 7,911.16 *
+14/02/2026    Apollo Pharmacy                   627.14                 7,534.02 *
+13 Feb 2026   Zomato                            169.79                 7,114.23  ref#5103030
+06-02-26      NETFLIX.COM                       239.48                 6,874.75  ref#1055605
+08/02/2026    AMAZON MKTPLACE                   457.07                 6,417.68 *
+19/02/2026    Shell Fuel Stn                    265.96                 6,151.72
+1 Feb 2026    NETFLIX.COM                       400.29                 5,751.43
+12/02/2026    Airtel Postpaid                   859.66                 4,891.77
+23 Feb 2026   IKEA                              857.19                 4,034.58
+21 Feb 2026   UBER *TRIP                        432.71                 3,601.87  ref#8723224
+28-02-26      Myntra                            377.45                 3,224.42  ref#2287481
+13 Mar 2026   SALARY ACME CORP                            3,500.00     6,724.42
+21 Mar 2026   SALARY ACME CORP                            3,500.00    10,224.42
+3 Mar 2026    BigBasket                         418.94                 9,805.48
+04-03-26      Airtel Postpaid                   556.63                 9,248.85 *
+4 Mar 2026    AMAZON MKTPLACE                   527.43                 8,721.42
+18-03-26      STARBUCKS #4412                   856.10                 7,865.32  ref#2017722
+20-03-26      AMAZON MKTPLACE                   100.47                 7,764.85
+7 Mar 2026    SALARY ACME CORP                            3,500.00    11,264.85
+9 Mar 2026    Apollo Pharmacy                   557.96                10,706.89
+16-03-26      STARBUCKS #4412                   139.20                10,567.69  ref#8816464
+16/03/2026    Interest Credit                             1,281.82    11,849.51
+05/03/2026    STARBUCKS #4412                   684.72                11,164.79
+24-03-26      ATM WDL CHENNAI                   451.61                10,713.18
+23 Mar 2026   Shell Fuel Stn                    484.05                10,229.13
+07-03-26      IKEA                              351.11                 9,878.02
+23/03/2026    Myntra                            826.17                 9,051.85
+25 Mar 2026   IKEA                              296.36                 8,755.49
+21-03-26      Swiggy Order                      638.73                 8,116.76 *
+9 Mar 2026    IKEA                              355.36                 7,761.40
+06/03/2026    Apollo Pharmacy                   703.87                 7,057.53
+18-03-26      Myntra                            709.99                 6,347.54  ref#9156086
+11/03/2026    Zomato                            567.38                 5,780.16
+26-03-26      BigBasket                         733.23                 5,046.93  ref#8562502
+27-03-26      SALARY ACME CORP                            3,500.00     8,546.93  ref#3360675
+08-03-26      BigBasket                         485.17                 8,061.76
+12/04/2026    AMAZON MKTPLACE                   891.06                 7,170.70
+26-04-26      ATM WDL CHENNAI                   446.13                 6,724.57  ref#6675272
+07/04/2026    Apollo Pharmacy                   424.62                 6,299.95
+24 Apr 2026   Apollo Pharmacy                   861.30                 5,438.65
+12-04-26      Swiggy Order                      229.60                 5,209.05  ref#2090139
+08-04-26      Rent - Sunrise Apts               209.17                 4,999.88
+07-04-26      Rent - Sunrise Apts               576.70                 4,423.18
+20-04-26      AMAZON MKTPLACE                   452.35                 3,970.83
+21 Apr 2026   Apollo Pharmacy                   727.69                 3,243.14
+03/04/2026    STARBUCKS #4412                   822.41                 2,420.73  ref#5458176
+26 Apr 2026   BigBasket                         451.11                 1,969.62
+06-04-26      UPI/Rahul S                                 1,363.44     3,333.06
+26 Apr 2026   SALARY ACME CORP                            3,500.00     6,833.06 *
+24 Apr 2026   Swiggy Order                      663.33                 6,169.73
+06/04/2026    NETFLIX.COM                        63.69                 6,106.04  ref#7893523
+6 Apr 2026    NETFLIX.COM                        63.69                 6,042.35
+27-04-26      Rent - Sunrise Apts               605.25                 5,437.10 *
+12/04/2026    NETFLIX.COM                       511.85                 4,925.25  ref#3864924
+05-04-26      AMAZON MKTPLACE                    52.25                 4,873.00
+24-04-26      STARBUCKS #4412                   492.86                 4,380.14
+05-04-26      UPI/Rahul S                       207.53                 4,172.61
+28-04-26      BigBasket                          64.07                 4,108.54
+07/04/2026    Electricity Board                 471.00                 3,637.54
+25/04/2026    Airtel Postpaid                   263.05                 3,374.49  ref#9398754
+14 Apr 2026   NETFLIX.COM                        92.38                 3,282.11  ref#4691411
+24-05-26      Apollo Pharmacy                   812.03                 2,470.08  ref#8549083
+22/05/2026    IKEA                              401.74                 2,068.34
+17/05/2026    NETFLIX.COM                       497.37                 1,570.97
+17 May 2026   IKEA                               56.09                 1,514.88
+15/05/2026    Shell Fuel Stn                    563.36                   951.52
+25 May 2026   NETFLIX.COM                       188.22                   763.30
+16 May 2026   STARBUCKS #4412                   518.57                   244.73  ref#7925327
+11-05-26      IKEA                              496.42                  -251.69
+16-05-26      STARBUCKS #4412                   799.58                -1,051.27
+02/05/2026    Zomato                            204.52                -1,255.79
+2 May 2026    STARBUCKS #4412                   476.63                -1,732.42
+18 May 2026   AMAZON MKTPLACE                   693.59                -2,426.01 *
+3 May 2026    Interest Credit                             3,894.77     1,468.76
+20-05-26      IKEA                              211.49                 1,257.27  ref#5168360
+09-05-26      Interest Credit                             3,239.08     4,496.35  ref#8480262
+17-05-26      Zomato                            641.33                 3,855.02
+09/05/2026    Myntra                            807.77                 3,047.25  ref#8133670
+7 May 2026    Interest Credit                               530.41     3,577.66
+15/05/2026    Airtel Postpaid                   102.39                 3,475.27 *
+08-05-26      UPI/Rahul S                                 2,694.41     6,169.68
+26/05/2026    STARBUCKS #4412                   811.44                 5,358.24
+05/05/2026    Apollo Pharmacy                   162.96                 5,195.28
+5 May 2026    Interest Credit                             3,812.39     9,007.67
+13 May 2026   Rent - Sunrise Apts               180.00                 8,827.67
+22/05/2026    Zomato                            178.86                 8,648.81 *
+14/06/2026    IKEA                              387.28                 8,261.53
+14 Jun 2026   BigBasket                         346.69                 7,914.84 *
+3 Jun 2026    Apollo Pharmacy                    56.76                 7,858.08
+18/06/2026    Interest Credit                               121.42     7,979.50
+11 Jun 2026   IKEA                              576.58                 7,402.92  ref#4216221
+17-06-26      Swiggy Order                      137.05                 7,265.87 *
+26/06/2026    Zomato                            875.66                 6,390.21 *
+04-06-26      Swiggy Order                      268.39                 6,121.82
+02-06-26      Shell Fuel Stn                    272.58                 5,849.24  ref#5066085
+5 Jun 2026    UPI/Rahul S                       621.34                 5,227.90 *
+09/06/2026    SALARY ACME CORP                            3,500.00     8,727.90  ref#1491251
+17 Jun 2026   Rent - Sunrise Apts               642.36                 8,085.54
+03/06/2026    ATM WDL CHENNAI                    89.47                 7,996.07  ref#4256713
+23 Jun 2026   Shell Fuel Stn                    405.77                 7,590.30
+03-06-26      ATM WDL CHENNAI                   846.98                 6,743.32  ref#4822529
+21-06-26      Swiggy Order                      729.40                 6,013.92  ref#4804838
+03/06/2026    Zomato                             97.30                 5,916.62  ref#6671564
+28-06-26      STARBUCKS #4412                   430.25                 5,486.37
+11/06/2026    Myntra                            399.27                 5,087.10 *
+09/06/2026    NETFLIX.COM                        77.16                 5,009.94  ref#4442996
+23/06/2026    Zomato                            846.79                 4,163.15
+06/06/2026    ATM WDL CHENNAI                    83.33                 4,079.82
+07-06-26      Electricity Board                 580.66                 3,499.16
+17 Jun 2026   BigBasket                         289.37                 3,209.79 *
+17/06/2026    Shell Fuel Stn                    272.65                 2,937.14  ref#4746757
+--------------------------------------------------------------------------------
+Closing Balance:   Rs. 3,937.14      <-- (C) wrong on purpose (+1000)
+
+This is a computer generated statement. Page 1 of 4 .. cont'd .. Page 2 of 4
+Disclaimer: errors & omissions excepted

@@ -6,6 +6,21 @@ import seaborn as sns
 from fpdf import FPDF
 import re
 
+_UNICODE_MAP = {"–": "-", "—": "-", "‘": "'", "’": "'", "“": '"', "”": '"',
+                "•": "-", "…": "...", "₹": "Rs.", "€": "EUR", " ": " ", "→": "->"}
+
+
+def _safe(text) -> str:
+    """fpdf's built-in fonts only support latin-1; map common symbols and replace the rest."""
+    text = str(text)
+    for k, v in _UNICODE_MAP.items():
+        text = text.replace(k, v)
+    return text.encode("latin-1", "replace").decode("latin-1")
+
+
+MAX_PDF_ROWS = 300
+
+
 class PDFReport(FPDF):
     def header(self):
         self.set_font("helvetica", "B", 18)
@@ -27,10 +42,10 @@ def create_charts(llm_json):
         labels = insights.get("chart_labels", [])
         values = insights.get("chart_values", [])
 
-        if labels and values and len(labels) == len(values):
+        if labels and values and len(labels) == len(values) and any(v > 0 for v in values) and all(v >= 0 for v in values):
             # Chart 1: Horizontal Bar
             fig1, ax1 = plt.subplots(figsize=(8, 4))
-            sns.barplot(x=values, y=labels, ax=ax1, palette="viridis")
+            sns.barplot(x=values, y=labels, hue=labels, legend=False, ax=ax1, palette="viridis")
             ax1.set_title(title)
             fig1.savefig(buf1, format="png", bbox_inches='tight')
             plt.close(fig1)
@@ -67,17 +82,17 @@ def create_pdf_report(validation_report, llm_json, output_filename="validated_re
         insights = json.loads(llm_json)
         for key in ["executive_summary", "trend_analysis", "risk_factors", "recommended_actions"]:
             pdf.set_font("helvetica", "B", 12)
-            pdf.cell(0, 8, key.replace("_", " ").title() + ":", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 8, _safe(key.replace("_", " ").title() + ":"), new_x="LMARGIN", new_y="NEXT")
             pdf.set_font("helvetica", "", 10)
             
             data = insights.get(key, [])
             if isinstance(data, list):
                 for item in data:
-                    pdf.multi_cell(0, 5, f"- {item}", new_x="LMARGIN", new_y="NEXT")
+                    pdf.multi_cell(0, 5, _safe(f"- {item}"), new_x="LMARGIN", new_y="NEXT")
             else:
-                pdf.multi_cell(0, 5, str(data), new_x="LMARGIN", new_y="NEXT")
+                pdf.multi_cell(0, 5, _safe(data), new_x="LMARGIN", new_y="NEXT")
             pdf.ln(2)
-    except:
+    except Exception:
         pdf.multi_cell(0, 6, "AI Analysis Output Failed.", new_x="LMARGIN", new_y="NEXT")
 
     # Page 2: Visualizations
@@ -99,32 +114,49 @@ def create_pdf_report(validation_report, llm_json, output_filename="validated_re
     pdf.cell(0, 10, "3. Extracted Data Grid", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(5)
 
-    all_logs = validation_report.get("valid_records", []) + validation_report.get("anomalies", [])
+    issues = validation_report.get("document_issues", [])
+    if issues:
+        pdf.set_font("helvetica", "B", 11)
+        pdf.cell(0, 8, "Document-level issues:", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("helvetica", "", 9)
+        for msg in issues:
+            pdf.multi_cell(0, 5, _safe(f"- {msg}"), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+    anomalies = validation_report.get("anomalies", [])
+    valid = validation_report.get("valid_records", [])
+    total_rows = len(anomalies) + len(valid)
+    all_logs = (anomalies + valid)[:MAX_PDF_ROWS]       # anomalies first: they are what a reader needs
+    if total_rows > MAX_PDF_ROWS:
+        pdf.set_font("helvetica", "I", 9)
+        pdf.multi_cell(0, 5, f"Showing {MAX_PDF_ROWS} of {total_rows} rows (all {len(anomalies)} anomalies first). The full data is in the Tableau extract.",
+                       new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
     if all_logs:
         pdf.set_font("helvetica", "", 8)
-        # Extract headers from the first dictionary keys
-        headers = list(all_logs[0].keys())
+        headers = list(dict.fromkeys(k for row in all_logs for k in row if k not in ("errors", "extraction_reasoning")))[:10]
         col_width = 190 / len(headers) if headers else 40
-        
-        # Header Row
+
         pdf.set_fill_color(200, 220, 255)
         for header in headers:
-            pdf.cell(col_width, 8, str(header)[:15], border=1, fill=True, align="C")
+            pdf.cell(col_width, 8, _safe(header)[:15], border=1, fill=True, align="C")
         pdf.ln()
 
-        # Data Rows
         for i, row in enumerate(all_logs):
             fill = (i % 2 == 0)
             pdf.set_fill_color(245, 245, 245)
-            # Highlight anomalies in light red
-            if "errors" in row:
+            if "errors" in row:   # highlight anomalies in light red
                 pdf.set_fill_color(255, 200, 200)
-                
+                fill = True
             for key in headers:
-                val = str(row.get(key, ""))[:20]
-                pdf.cell(col_width, 8, val, border=1, fill=fill, align="C")
+                pdf.cell(col_width, 8, _safe(row.get(key, ""))[:20], border=1, fill=fill, align="C")
             pdf.ln()
-            
+            if "errors" in row:   # say WHY the row is flagged
+                pdf.set_font("helvetica", "I", 7)
+                for err in row["errors"]:
+                    pdf.multi_cell(0, 4, _safe("   ! " + err), new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font("helvetica", "", 8)
+
     os.makedirs("uploads", exist_ok=True)
     filepath = os.path.join("uploads", output_filename)
     pdf.output(filepath)

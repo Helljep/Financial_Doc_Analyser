@@ -1,12 +1,15 @@
-import streamlit as st
+import hashlib
 import json
-import time
-from report import create_charts, create_pdf_report
-from ocr import extract_financial_data
-from validator import validate_line_items
-from llm import generate_report
+
+import pandas as pd
+import streamlit as st
+
+from audit import canonical_json, generate_audit_hash, verify_ledger
 from hyper_export import create_hyper_extract
-from audit import generate_audit_hash
+from llm import generate_report
+from ocr import extract_financial_data
+from report import create_charts, create_pdf_report
+from validator import validate_line_items
 
 st.set_page_config(
     page_title="Financial Gauntlet | Analytics", 
@@ -40,102 +43,153 @@ st.markdown("""
 st.title("📈 Financial Gauntlet Analytics")
 st.markdown("<p style='font-size: 18px; color: #8b949e; margin-bottom: 30px;'>An intelligent, hybrid pipeline ingesting unstructured system logs and structured invoices to generate deep, mathematically-validated AI insights.</p>", unsafe_allow_html=True)
 
+DOC_TYPES = ["invoice", "tax_1040", "insurance_claim", "bank_statement", "unknown"]
+MAX_MB = 250   # keep in sync with server.maxUploadSize in .streamlit/config.toml
+
+
+def clean_rows(df: pd.DataFrame) -> list:
+    """Editor output -> list of dicts, dropping blank cells and fully empty rows."""
+    rows = []
+    for rec in df.to_dict("records"):
+        row = {k: v for k, v in rec.items() if not (v is None or v == "" or pd.isna(v))}
+        if row:
+            rows.append(row)
+    return rows
+
+
+def run_extraction(file, file_id: str):
+    with st.status("⚙️ Extracting document data...", expanded=True) as status:
+        st.write("🔍 Parsing document & extracting the raw data matrix...")
+        bar = st.progress(0.0, text="Reading document...")
+
+        def on_progress(done, total):
+            bar.progress(done / total, text=f"Extracted part {done} of {total}")
+
+        extracted = extract_financial_data(file, on_progress=on_progress)
+        bar.empty()
+        if extracted.get("type") == "error":
+            status.update(label="Extraction failed", state="error")
+            st.error(f"The extraction engine failed: {extracted.get('error', 'unknown error')}")
+            st.stop()
+        initial = validate_line_items(extracted)
+        status.update(label="✅ Extraction complete", state="complete", expanded=False)
+    st.session_state.update(file_id=file_id, extracted=extracted,
+                            had_issues=bool(initial["anomalies"] or initial["document_issues"]))
+    for stale in ("report_key", "artifacts"):
+        st.session_state.pop(stale, None)
+
+
 # Upload Section inside a stylish container
 with st.container():
     st.markdown("### 📥 Document Intake")
-    uploaded_file = st.file_uploader("Upload your Document (PDF, Word, TXT, CSV, Images) to begin analysis.", type=["pdf", "txt", "csv", "log", "png", "jpg", "jpeg", "docx", "doc"])
+    uploaded_file = st.file_uploader("Upload your Document (PDF, Word .docx, TXT, CSV, Images) to begin analysis.",
+                                     type=["pdf", "txt", "csv", "log", "png", "jpg", "jpeg", "docx"])
 
 if uploaded_file:
-    file_size_mb = uploaded_file.size / (1024 * 1024)
+    file_bytes = uploaded_file.getvalue()
+    file_size_mb = len(file_bytes) / (1024 * 1024)
     if file_size_mb == 0:
         st.error("Error: Uploaded file is empty (0 bytes).")
         st.stop()
-    elif file_size_mb > 50:
-        st.error(f"Error: File size ({file_size_mb:.2f} MB) exceeds the 50MB limit.")
+    elif file_size_mb > MAX_MB:
+        st.error(f"Error: File size ({file_size_mb:.2f} MB) exceeds the {MAX_MB}MB limit.")
         st.stop()
 
-    with st.status("⚙️ Executing Analytics Pipeline...", expanded=True) as status:
-        st.write("🔍 Parsing Document & Extracting Raw Data Matrix (1-Shot AI Approach)...")
-        try:
-            # 1. Full Document Extraction
-            extracted_data = extract_financial_data(uploaded_file)
-            
-            # Format Classification Check
-            doc_type = extracted_data.get("type", "unknown")
-            if doc_type == "unknown":
-                st.warning("Format Unrecognized: Proceeding with generic anomaly detection.", icon="⚠️")
-            else:
-                st.success(f"Document Successfully Classified: {doc_type.upper()}", icon="✅")
+    file_id = hashlib.sha256(file_bytes).hexdigest()
 
-            # 2. Complete Math Validation
-            st.write("🧮 Running Chronological Math & Anomaly Detection...")
-            validation_report = validate_line_items(extracted_data)
-            
-        except Exception as e:
-            st.error("Fatal Error: The extraction engine encountered a critical failure.")
-            with st.expander("View System Traceback"):
-                st.text(str(e))
-            st.stop()
-            
-        # --- HUMAN-IN-THE-LOOP UI ---
-        if validation_report.get("anomalies"):
-            st.warning("⚠️ Anomalies Detected! Review and fix the data extracted below to proceed.")
-            # Show interactive grid
-            edited_anomalies = st.data_editor(validation_report["anomalies"], use_container_width=True, key="hitl_editor")
-            
-            # Detect changes and re-validate dynamically
-            if edited_anomalies != validation_report["anomalies"]:
-                clean_edited = [{k: v for k, v in a.items() if k != "errors"} for a in edited_anomalies]
-                clean_valid = [{k: v for k, v in v.items() if k != "errors"} for v in validation_report.get("valid_records", [])]
-                
-                doc_type = validation_report.get("doc_type")
-                if doc_type == "invoice":
-                    headers = list(clean_valid[0].keys()) if clean_valid else list(clean_edited[0].keys())
-                    new_table = [headers]
-                    for rec in clean_valid + clean_edited:
-                        new_table.append([rec.get(h, "") for h in headers])
-                    extracted_data["data"] = [new_table]
-                elif doc_type == "logs":
-                    extracted_data["data"] = clean_valid + clean_edited
-                
-                st.info("🔄 Modifications detected. Re-validating payload...")
-                validation_report = validate_line_items(extracted_data)
-                
-                if not validation_report.get("anomalies"):
-                    st.success("✅ Issues Resolved! Continuing pipeline...")
-                else:
-                    st.error("⚠️ Overcharge or Math Anomalies still present in the edited data.")
-        
-        st.write("🧠 Synthesizing Intelligence via Gemini 2.5 Flash...")
-        report_json_str = generate_report(validation_report, extracted_data["text"], extracted_data.get("extraction_reasoning", ""))
-        
-        st.write("📄 Rendering C-Suite PDF Final Report...")
-        pdf_path = create_pdf_report(validation_report, report_json_str)
-        
-        st.write("📦 Generating Tableau Data Extract (.hyper)...")
-        doc_type_fmt = validation_report.get('doc_type', 'unknown').upper()
-        hyper_path = create_hyper_extract(validation_report, output_filename=f"analytics_{doc_type_fmt}.hyper")
-        
-        st.write("🛡️ Securing Payload via Immutable Audit Hash...")
-        audit_hash = generate_audit_hash(validation_report)
-        st.success(f"Audit Hash Generated: {audit_hash}")
-        
-        status.update(label=f"✅ Pipeline Completed Successfully (Mode: {doc_type_fmt})", state="complete", expanded=False)
+    # Streamlit re-runs this script on every interaction. Extraction and the AI report are the
+    # expensive/non-deterministic steps, so they run once per file (and once per distinct edit).
+    if st.session_state.get("file_id") != file_id:
+        run_extraction(uploaded_file, file_id)
+
+    extracted_data = st.session_state["extracted"]
+    detected = extracted_data.get("type", "unknown")
+
+    # --- DOCUMENT TYPE (the AI can misclassify; the wrong type means the wrong rule set) ---
+    st.markdown("### 🧾 Classification")
+    doc_type = st.selectbox(
+        "Document type (auto-detected: change it if the AI got it wrong)",
+        DOC_TYPES,
+        index=DOC_TYPES.index(detected) if detected in DOC_TYPES else DOC_TYPES.index("unknown"),
+        key=f"doctype_{file_id}",
+    )
+    if doc_type == "unknown":
+        st.warning("Format unrecognized: only generic duplicate detection will run.", icon="⚠️")
+    elif doc_type == detected:
+        st.success(f"Document classified as {doc_type.upper()}", icon="✅")
+    else:
+        st.info(f"Validating as {doc_type.upper()} (AI detected {detected.upper()}).", icon="✏️")
+
+    # --- HUMAN-IN-THE-LOOP: edit any extracted value; everything below re-validates ---
+    original_rows = extracted_data["data"]
+    with st.expander("✏️ Review & correct extracted data", expanded=st.session_state.get("had_issues", False)):
+        st.caption("Fix any misread values here. Validation, the report, the exports and the audit hash all update from your edits.")
+        edited_df = st.data_editor(pd.DataFrame(original_rows), num_rows="dynamic",
+                                   width="stretch", key=f"editor_{file_id}")
+    edited_rows = clean_rows(edited_df)
+    manually_edited = edited_rows != clean_rows(pd.DataFrame(original_rows))
+
+    working = dict(extracted_data, type=doc_type, data=edited_rows)
+    validation_report = validate_line_items(working)
+
+    for issue in validation_report.get("document_issues", []):
+        st.warning(issue, icon="📄")
+    if validation_report["anomalies"]:
+        st.warning("⚠️ Anomalies detected. Correct the values above (or the document type) to resolve them.")
+        st.dataframe([{**{k: v for k, v in a.items() if k != "errors"}, "issues": "; ".join(a.get("errors", []))}
+                      for a in validation_report["anomalies"]], width="stretch")
+    elif not validation_report.get("document_issues"):
+        st.success("✅ All checks passed.")
+
+    # --- REPORT + EXPORTS (regenerated only when the validated data actually changes) ---
+    audit_payload = dict(validation_report, source_sha256=file_id, manually_edited=manually_edited)
+    report_key = hashlib.sha256(canonical_json(audit_payload).encode("utf-8")).hexdigest()
+
+    if st.session_state.get("report_key") != report_key:
+        with st.status("⚙️ Building report...", expanded=True) as status:
+            st.write("🧠 Synthesizing intelligence via Gemini 2.5 Flash...")
+            report_json_str = generate_report(validation_report, extracted_data["text"], extracted_data.get("extraction_reasoning", ""))
+            st.write("📄 Rendering PDF report...")
+            tag = report_key[:10]
+            pdf_path = create_pdf_report(validation_report, report_json_str, output_filename=f"report_{tag}.pdf")
+            st.write("📦 Generating Tableau data extract (.hyper)...")
+            hyper_path = create_hyper_extract(validation_report, output_filename=f"analytics_{doc_type.upper()}_{tag}.hyper")
+            st.write("🛡️ Recording hash in the audit ledger...")
+            audit_hash = generate_audit_hash(audit_payload)
+            status.update(label=f"✅ Report ready (mode: {doc_type.upper()})", state="complete", expanded=False)
+        st.session_state["artifacts"] = dict(report_json_str=report_json_str, pdf_path=pdf_path,
+                                             hyper_path=hyper_path, audit_hash=audit_hash)
+        st.session_state["report_key"] = report_key
+
+    art = st.session_state["artifacts"]
+    report_json_str, pdf_path, hyper_path, audit_hash = art["report_json_str"], art["pdf_path"], art["hyper_path"], art["audit_hash"]
+    doc_type_fmt = doc_type.upper()
+
+    ledger_ok, ledger_msg = verify_ledger()
+    st.caption(f"🛡️ Audit hash (SHA-256 of the validated data): `{audit_hash}` · {ledger_msg}")
+    if not ledger_ok:
+        st.error(f"Audit ledger integrity check failed: {ledger_msg}")
 
     st.markdown("---")
 
     # --- KPI DASHBOARD ---
     st.markdown("### 📊 Key Performance Indicators")
-    col1, col2, col3 = st.columns(3)
-    tot = len(validation_report.get("valid_records", [])) + len(validation_report.get("anomalies", []))
-    anom = len(validation_report.get("anomalies", []))
+    tot = len(validation_report["valid_records"]) + len(validation_report["anomalies"])
+    anom = len(validation_report["anomalies"])
     acc = validation_report.get("accuracy_score", 0.0)
-    
-    col1.metric("Total Records Parsed", f"{tot:,}")
-    col2.metric("Anomalies Detected", anom, delta=f"-{anom}" if anom > 0 else "0", delta_color="inverse")
-    col3.metric("Data Confidence Score", f"{acc * 100:.1f}%")
+    recon = validation_report.get("reconciliation")
 
-    st.markdown("<br>", unsafe_allow_html=True) # Spacer
+    cols = st.columns(4 if recon else 3)
+    cols[0].metric("Total Records Parsed", f"{tot:,}")
+    cols[1].metric("Anomalies Detected", anom, delta=f"-{anom}" if anom > 0 else "0", delta_color="inverse")
+    cols[2].metric("Validation Pass Rate", f"{acc * 100:.1f}%",
+                   help="Share of rows whose arithmetic checks passed. It does not measure how accurately the AI read the document.")
+    if recon:
+        cols[3].metric("Line Items vs Grand Total", "Match" if recon["matches"] else f"Off by {recon['difference']:,.2f}",
+                       help=f"Sum of line items {recon['line_items_sum']:,.2f} vs stated total {recon['grand_total']:,.2f}. "
+                            "A gap can be legitimate (e.g. tax or shipping not listed as a line).")
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # --- MAIN CONTENT LAYOUT ---
     st.markdown("### 🧬 Deep Analysis")
@@ -148,18 +202,18 @@ if uploaded_file:
             with st.container(border=True):
                 st.info(f"**Brief:** {insights.get('executive_summary', 'No summary available.')}", icon="📌")
                 st.write(f"**Trend Analysis:** {insights.get('trend_analysis', 'Insufficient data for trends.')}")
-                
+
                 st.markdown("---")
                 st.error("**⚠️ Critical Risk Factors**")
                 for risk in insights.get('risk_factors', []):
                     st.markdown(f"- {risk}")
-                    
+
                 st.markdown("<br>", unsafe_allow_html=True)
-                
+
                 st.success("**🎯 Recommended Actions**")
                 for action in insights.get('recommended_actions', []):
                     st.markdown(f"- {action}")
-                    
+
         except json.JSONDecodeError:
             st.warning("Failed to parse Structured AI Analytics output.")
             with st.expander("View Raw API Response"):
@@ -169,35 +223,35 @@ if uploaded_file:
         st.markdown("#### 📉 Visual Telemetry")
         buf1, buf2 = create_charts(report_json_str)
         if buf1 and buf2:
-            st.image(buf1, use_container_width=True)
+            st.image(buf1, width="stretch")
             st.markdown("<br>", unsafe_allow_html=True)
-            st.image(buf2, use_container_width=True)
+            st.image(buf2, width="stretch")
         else:
             st.warning("Insufficient numeric variance to render telemetry charts.", icon="ℹ️")
 
     st.markdown("---")
-    
+
     # --- FINAL EXPORT ---
     st.markdown("### 📤 Report Export")
     st.markdown("<p style='color: #8b949e; margin-bottom: 20px;'>Download the mathematically validated PDF report or the core database extract for Tableau.</p>", unsafe_allow_html=True)
-    
+
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
         with open(pdf_path, "rb") as pdf_file:
             st.download_button(
-                label="📄 Download Validated C-Suite Report (.pdf)",
-                data=pdf_file,
+                label="📄 Download Validated Report (.pdf)",
+                data=pdf_file.read(),
                 file_name=f"Financial_Gauntlet_{doc_type_fmt}.pdf",
-                mime="application/pdf"
+                mime="application/pdf",
             )
     with col_dl2:
         if hyper_path:
             with open(hyper_path, "rb") as hyper_file:
                 st.download_button(
                     label="📊 Download Tableau Extract (.hyper)",
-                    data=hyper_file,
+                    data=hyper_file.read(),
                     file_name=f"Financial_Gauntlet_{doc_type_fmt}.hyper",
-                    mime="application/octet-stream"
+                    mime="application/octet-stream",
                 )
         else:
-            st.warning("No tabular data generated to extract to Tableau.")
+            st.info("Tableau extract unavailable (no tabular data, or the Tableau Hyper API could not be loaded on this machine).")

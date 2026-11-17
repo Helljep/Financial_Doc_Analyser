@@ -1,12 +1,46 @@
 import os
 import json
-from google import genai
-from google.genai import types
-from pydantic import BaseModel
+from collections import Counter
 from typing import List
 
-# API key MUST be set via GEMINI_API_KEY environment variable
-client = genai.Client(api_key="AIzaSyCnaDrmUqHn0yl6_BVjNFtawLRhm5vnCJQ")
+from pydantic import BaseModel
+
+from config import MODEL_NAME, get_client
+from validator import _amount
+
+# A 2,000-page document has thousands of rows; sending them all would overflow the model's context.
+# Above these limits the report is built from counts, error-type tallies, the largest values and samples.
+MAX_REPORT_ROWS = 40
+MAX_REPORT_TEXT_CHARS = 60_000
+
+
+def compact_validation_report(report: dict) -> dict:
+    valid, anomalies = report.get("valid_records", []), report.get("anomalies", [])
+    if len(valid) + len(anomalies) <= MAX_REPORT_ROWS * 2:
+        return report
+    everything = sorted(valid + anomalies, key=lambda r: abs(_amount(r)), reverse=True)
+    tally = Counter(e.split(":")[0] for a in anomalies for e in a.get("errors", []))
+    keep = lambda rows: [{k: v for k, v in r.items() if k != "extraction_reasoning"} for r in rows]
+    return {
+        "doc_type": report.get("doc_type"), "status": report.get("status"),
+        "document_issues": report.get("document_issues", []), "reconciliation": report.get("reconciliation"),
+        "pass_rate": report.get("accuracy_score"),
+        "counts": {"valid_records": len(valid), "anomalies": len(anomalies)},
+        "anomaly_types": dict(tally.most_common()),
+        "largest_records": keep(everything[:10]),
+        "anomaly_samples": keep(anomalies[:MAX_REPORT_ROWS]),
+        "note": f"Large document: showing samples only ({len(valid) + len(anomalies)} rows total).",
+    }
+
+
+def compact_text(text: str) -> str:
+    if len(text) <= MAX_REPORT_TEXT_CHARS:
+        return text
+    half = MAX_REPORT_TEXT_CHARS // 2
+    omitted = len(text) - MAX_REPORT_TEXT_CHARS
+    return text[:half] + f"\n\n[... {omitted:,} characters omitted ...]\n\n" + text[-half:]
+
+
 
 class ReportInsights(BaseModel):
     executive_summary: str
@@ -21,8 +55,8 @@ def generate_report(validation_report: dict, raw_text: str, overall_reasoning: s
     """
     Generates structured AI insights analyzing the math anomalies and raw text.
     """
-    # Pass the full document text — no truncation — for 100+ page documents
-    text_chunk = raw_text if raw_text else "No raw text provided."
+    # Very large documents are compacted (see compact_text) so the prompt always fits.
+    text_chunk = compact_text(raw_text) if raw_text else "No raw text provided."
 
     system_instruction = (
         "You are an Expert Data Analyst. Review the chronological log data anomalies "
@@ -37,15 +71,16 @@ def generate_report(validation_report: dict, raw_text: str, overall_reasoning: s
     {overall_reasoning}
 
     Validation Report Data (includes line-item 'extraction_reasoning'):
-    {json.dumps(validation_report, indent=2)}
+    {json.dumps(compact_validation_report(validation_report), indent=2, default=str)}
     
     Raw Document Text:
     {text_chunk}
     """
 
     try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
+        from google.genai import types
+        response = get_client().models.generate_content(
+            model=MODEL_NAME,
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,

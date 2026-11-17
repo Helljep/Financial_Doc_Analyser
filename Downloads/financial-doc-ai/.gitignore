@@ -1,0 +1,16 @@
+# Secrets and local config
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime output
+*.log
+audit_ledger.jsonl
+hyperd.log
+uploads/
+sample_docs/huge_*

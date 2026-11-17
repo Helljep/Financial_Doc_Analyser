@@ -1,9 +1,14 @@
 import os
 from decimal import Decimal
-from tableauhyperapi import HyperProcess, Telemetry, Connection, CreateMode, TableDefinition, SqlType, Inserter, TableName
+
+try:
+    from tableauhyperapi import HyperProcess, Telemetry, Connection, CreateMode, TableDefinition, SqlType, Inserter, TableName
+    HYPER_AVAILABLE = True
+except (ImportError, OSError):   # package missing, or its native library can't load on this machine
+    HYPER_AVAILABLE = False
 
 
-def _infer_sql_type(all_data: list, key: str) -> SqlType:
+def _infer_sql_type(all_data: list, key: str) -> "SqlType":
     """
     Scan ALL rows for a given key to infer the safest Tableau SqlType.
     - If ANY value is a float or Decimal  → double()
@@ -40,16 +45,38 @@ def _infer_sql_type(all_data: list, key: str) -> SqlType:
     return SqlType.text()  # safe default for empty columns
 
 
+def _flatten(row: dict, is_anomaly: bool) -> dict:
+    """Make a record Tableau-friendly: errors list -> one text column, plus an is_anomaly flag."""
+    out = {k: v for k, v in row.items() if k != "errors"}
+    out["is_anomaly"] = "Yes" if is_anomaly else "No"
+    out["errors"] = "; ".join(row.get("errors", [])) if is_anomaly else ""
+    return out
+
+
+LAST_ERROR = ""
+
+
 def create_hyper_extract(validation_report, output_filename="financial_data.hyper"):
+    """Returns the .hyper path, or None if there is no data or the Hyper engine can't run here
+    (e.g. blocked by Application Control); the reason is left in LAST_ERROR."""
+    global LAST_ERROR
+    try:
+        return _create_hyper_extract(validation_report, output_filename)
+    except Exception as e:      # HyperException, blocked hyperd.exe, disk errors...
+        LAST_ERROR = f"{type(e).__name__}: {str(e)[:200]}"
+        return None
+
+
+def _create_hyper_extract(validation_report, output_filename):
     """
     Takes the validated financial records (and anomalies) and generates
     a highly optimized Tableau .hyper database extract.
     """
     valid = validation_report.get("valid_records", [])
     anomalies = validation_report.get("anomalies", [])
-    all_data = valid + anomalies
+    all_data = [_flatten(r, False) for r in valid] + [_flatten(r, True) for r in anomalies]
 
-    if not all_data:
+    if not all_data or not HYPER_AVAILABLE:
         return None
 
     os.makedirs("uploads", exist_ok=True)
@@ -60,7 +87,8 @@ def create_hyper_extract(validation_report, output_filename="financial_data.hype
                         database=hyper_filepath,
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
 
-            current_keys = list(all_data[0].keys())
+            # Union of columns across ALL rows (rows can have different fields), first-seen order.
+            current_keys = list(dict.fromkeys(k for row in all_data for k in row))
             table_name = TableName("Extract", "Extract")
 
             # Robust column type inference across ALL rows

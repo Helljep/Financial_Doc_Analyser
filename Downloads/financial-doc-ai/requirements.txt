@@ -2,8 +2,10 @@ streamlit
 google-genai
 pydantic
 PyPDF2
+python-docx
+pandas
 tableauhyperapi
 matplotlib
 seaborn
 fpdf2
-tableauhyperapi
+pytest

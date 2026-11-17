@@ -1,0 +1,41 @@
+
+   NORTHWIND CLOUD  SERVICES   Pvt  Ltd.
+   GSTIN: 33AABCN1234F1Z5      INVOICE  #  INV-2026-0098
+   Bill to: Sunrise  Retail  Co.        Date: 3rd Nov 2026       Terms: Net 30
+
+  #   Description                              Qty     Rate      Disc%      Amount
+  1.  Cloud hosting - prod cluster               3   1,200.00     0%      3,600.00
+  2.  Premium support (annual)                   1   5,400.00    10%      4,860.00
+  3.  Data egress overage                       12      85.50     0%      1,026.00
+  4.  SSL certificates                           4     149.00     0%        596.00
+  5.  Consulting hrs - migration                40      95.00     5%      3,610.00
+  6.  Load balancer                              2     310.00     0%        800.00
+  7.  Backup storage 5TB                         5     210.00     0%      1,050.00
+  8.  Monitoring seats                          25      18.00     0%        450.00
+  9.  Training workshop                          2     750.00     0%      1,500.00
+ 10.  Dedicated IP                               6      12.00     0%         72.00
+ 11.  Log retention add-on                       3      99.00     0%        297.00
+ 12.  Security audit                             1   2,800.00     0%      2,800.00
+ 13.  Cloud hosting - prod cluster (phase 2)     3   1,200.00     0%      3,600.00
+ 14.  Premium support (annual) (phase 2)         2   5,400.00    10%      9,720.00
+ 15.  Data egress overage (phase 2)             14      85.50     0%      1,197.00
+ 16.  SSL certificates (phase 2)                 4     149.00     0%        596.00
+ 17.  Consulting hrs - migration (phase 2)      41      95.00     5%      3,700.25
+ 18.  Load balancer (phase 2)                    4     310.00     0%      1,240.00
+ 19.  Backup storage 5TB (phase 2)               5     210.00     0%      1,050.00
+ 20.  Security audit                             1   2,800.00     0%      2,800.00
+ 21.  Training workshop (phase 2)                4     750.00     0%      3,000.00
+ 22.  Dedicated IP (phase 2)                     6      12.00     0%         72.00
+ 23.  Log retention add-on (phase 2)             4      99.00     0%        396.00
+ 24.  Security audit (phase 2)                   3   2,800.00     0%      8,400.00
+ 25.  Cloud hosting - prod cluster (phase 3)     3   1,200.00     0%      3,600.00
+ 26.  Premium support (annual) (phase 3)         2   5,400.00    10%      9,720.00
+ 27.  Data egress overage (phase 3)             14      85.50     0%      1,197.00
+ 28.  SSL certificates (phase 3)                 4     149.00     0%        596.00
+ 29.  Payment Gateway Fee                                                   497.73
+
+                                         Subtotal :  71,545.25
+                                         GRAND TOTAL :  72,042.98
+
+Notes: pls remit within terms.  Late fee 1.5%/mo.  Bank: Sunrise Bank  IFSC SUNR0001234
+Scanned copy - some figures may be unclear.  (C) gateway fee should be 0.5% of subtotal = 357.73
