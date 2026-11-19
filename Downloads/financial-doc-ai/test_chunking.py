@@ -67,7 +67,7 @@ def test_split_text_hard_splits_a_giant_line():
 def test_chunked_extraction_merges_everything(monkeypatch, small_chunks):
     seen = []
 
-    def fake(contents, config, attempts=3):
+    def fake(contents, config, attempts=3, usage=None):
         seen.append(contents)
         return Resp(parse_chunk(contents))
 
@@ -85,13 +85,13 @@ def test_chunked_extraction_merges_everything(monkeypatch, small_chunks):
 
 
 def test_row_order_is_preserved(monkeypatch, small_chunks):
-    monkeypatch.setattr(ocr, "_call_gemini", lambda c, cfg, attempts=3: Resp(parse_chunk(c)))
+    monkeypatch.setattr(ocr, "_call_gemini", lambda c, cfg, attempts=3, usage=None: Resp(parse_chunk(c)))
     out = ocr.extract_financial_data(FakeUpload("stmt.txt", make_statement(60)))
     assert [r["date"] for r in out["data"]] == [str(i) for i in range(1, 61)]
 
 
 def test_failed_chunk_is_reported_not_silently_dropped(monkeypatch, small_chunks):
-    def flaky(contents, config, attempts=3):
+    def flaky(contents, config, attempts=3, usage=None):
         if "shop30 " in contents:
             raise RuntimeError("429 quota exceeded")
         return Resp(parse_chunk(contents))
@@ -109,7 +109,7 @@ def test_truncated_answer_is_retried_on_halves(monkeypatch):
     big = make_statement(400)
     calls = {"n": 0}
 
-    def fake(contents, config, attempts=3):
+    def fake(contents, config, attempts=3, usage=None):
         calls["n"] += 1
         if len(contents) > 6000:                                      # pretend the answer was cut off (invalid JSON)
             class Bad:
@@ -123,7 +123,7 @@ def test_truncated_answer_is_retried_on_halves(monkeypatch):
 
 
 def test_all_chunks_failing_is_an_error(monkeypatch, small_chunks):
-    def boom(contents, config, attempts=3):
+    def boom(contents, config, attempts=3, usage=None):
         raise RuntimeError("down")
     monkeypatch.setattr(ocr, "_call_gemini", boom)
     assert ocr.extract_financial_data(FakeUpload("s.txt", make_statement(50)))["type"] == "error"

@@ -1,0 +1,26 @@
+/* Light touches on top of Streamlit's own theme (see .streamlit/config.toml). */
+
+.block-container { max-width: 1180px; padding-top: 2.2rem; }
+
+h1 { font-weight: 650; letter-spacing: -0.01em; margin-bottom: 0.2rem; }
+.tagline { color: #5b6472; font-size: 1.02rem; margin-bottom: 1.6rem; }
+
+[data-testid="stMetric"] {
+    background: #ffffff;
+    border: 1px solid #e3e7ee;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+}
+[data-testid="stMetricLabel"] { color: #5b6472; }
+
+[data-testid="stFileUploaderDropzone"] {
+    border: 1.5px dashed #b8c2d1;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.stTabs [data-baseweb="tab-list"] { gap: 1.2rem; }
+
+.stDownloadButton > button { width: 100%; }
+
+.source-note { color: #5b6472; font-size: 0.9rem; }

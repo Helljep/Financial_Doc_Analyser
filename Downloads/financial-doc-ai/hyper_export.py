@@ -1,127 +1,100 @@
+"""Write the validated rows to a Tableau .hyper extract."""
 import os
 from decimal import Decimal
 
 try:
-    from tableauhyperapi import HyperProcess, Telemetry, Connection, CreateMode, TableDefinition, SqlType, Inserter, TableName
+    from tableauhyperapi import (Connection, CreateMode, HyperProcess, Inserter, SqlType,
+                                 TableDefinition, TableName, Telemetry)
     HYPER_AVAILABLE = True
-except (ImportError, OSError):   # package missing, or its native library can't load on this machine
+except (ImportError, OSError):      # not installed, or its native library won't load here
     HYPER_AVAILABLE = False
 
+LAST_ERROR = ""         # why the last export failed, if it did
 
-def _infer_sql_type(all_data: list, key: str) -> "SqlType":
-    """
-    Scan ALL rows for a given key to infer the safest Tableau SqlType.
-    - If ANY value is a float or Decimal  → double()
-    - If ALL non-null values are int only → big_int()
-    - If mixed types or any string        → text()
-    """
-    has_float = False
-    has_int = False
-    has_str = False
 
-    for row in all_data:
-        val = row.get(key)
-        if val is None or val == "":
+def _column_type(rows: list, key: str):
+    """Pick a Tableau type that fits every value in the column."""
+    seen_float = seen_int = seen_text = False
+    for row in rows:
+        value = row.get(key)
+        if value is None or value == "":
             continue
-        if isinstance(val, bool):
-            has_str = True
-        elif isinstance(val, float) or isinstance(val, Decimal):
-            has_float = True
-        elif isinstance(val, int):
-            has_int = True
+        if isinstance(value, bool):
+            seen_text = True
+        elif isinstance(value, (float, Decimal)):
+            seen_float = True
+        elif isinstance(value, int):
+            seen_int = True
         else:
             try:
-                float(str(val).replace(',', ''))
-                has_float = True
+                float(str(value).replace(",", ""))
+                seen_float = True
             except ValueError:
-                has_str = True
+                seen_text = True
 
-    if has_str:
+    if seen_text:
         return SqlType.text()
-    if has_float:
+    if seen_float:
         return SqlType.double()
-    if has_int:
+    if seen_int:
         return SqlType.big_int()
-    return SqlType.text()  # safe default for empty columns
+    return SqlType.text()       # column with no values at all
 
 
 def _flatten(row: dict, is_anomaly: bool) -> dict:
-    """Make a record Tableau-friendly: errors list -> one text column, plus an is_anomaly flag."""
-    out = {k: v for k, v in row.items() if k != "errors"}
-    out["is_anomaly"] = "Yes" if is_anomaly else "No"
-    out["errors"] = "; ".join(row.get("errors", [])) if is_anomaly else ""
-    return out
+    """Tableau wants flat columns: the error list becomes one text column plus a yes/no flag."""
+    flat = {k: v for k, v in row.items() if k != "errors"}
+    flat["is_anomaly"] = "Yes" if is_anomaly else "No"
+    flat["errors"] = "; ".join(row.get("errors", [])) if is_anomaly else ""
+    return flat
 
 
-LAST_ERROR = ""
+def _convert(value, column_type):
+    if value is None or value == "":
+        return None
+    if column_type == SqlType.double():
+        try:
+            return float(str(value).replace(",", ""))
+        except ValueError:
+            return 0.0
+    if column_type == SqlType.big_int():
+        try:
+            return int(float(str(value).replace(",", "")))
+        except ValueError:
+            return None
+    return str(value)
 
 
 def create_hyper_extract(validation_report, output_filename="financial_data.hyper"):
-    """Returns the .hyper path, or None if there is no data or the Hyper engine can't run here
-    (e.g. blocked by Application Control); the reason is left in LAST_ERROR."""
+    """Returns the path of the .hyper file, or None if there is nothing to export or Hyper can't run here."""
     global LAST_ERROR
     try:
-        return _create_hyper_extract(validation_report, output_filename)
-    except Exception as e:      # HyperException, blocked hyperd.exe, disk errors...
-        LAST_ERROR = f"{type(e).__name__}: {str(e)[:200]}"
+        return _write_extract(validation_report, output_filename)
+    except Exception as error:      # Hyper can be blocked by policy, or the disk may be full
+        LAST_ERROR = f"{type(error).__name__}: {str(error)[:200]}"
         return None
 
 
-def _create_hyper_extract(validation_report, output_filename):
-    """
-    Takes the validated financial records (and anomalies) and generates
-    a highly optimized Tableau .hyper database extract.
-    """
-    valid = validation_report.get("valid_records", [])
-    anomalies = validation_report.get("anomalies", [])
-    all_data = [_flatten(r, False) for r in valid] + [_flatten(r, True) for r in anomalies]
-
-    if not all_data or not HYPER_AVAILABLE:
+def _write_extract(validation_report, output_filename):
+    rows = ([_flatten(r, False) for r in validation_report.get("valid_records", [])]
+            + [_flatten(r, True) for r in validation_report.get("anomalies", [])])
+    if not rows or not HYPER_AVAILABLE:
         return None
 
     os.makedirs("uploads", exist_ok=True)
-    hyper_filepath = os.path.join("uploads", output_filename)
+    path = os.path.join("uploads", output_filename)
+
+    # Rows can have different fields, so use the union of all of them as the columns.
+    keys = list(dict.fromkeys(key for row in rows for key in row))
+    columns = [TableDefinition.Column(name=key, type=_column_type(rows, key)) for key in keys]
+    table = TableDefinition(table_name=TableName("Extract", "Extract"), columns=columns)
 
     with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hyper:
-        with Connection(endpoint=hyper.endpoint,
-                        database=hyper_filepath,
-                        create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
-
-            # Union of columns across ALL rows (rows can have different fields), first-seen order.
-            current_keys = list(dict.fromkeys(k for row in all_data for k in row))
-            table_name = TableName("Extract", "Extract")
-
-            # Robust column type inference across ALL rows
-            columns = [
-                TableDefinition.Column(name=key, type=_infer_sql_type(all_data, key))
-                for key in current_keys
-            ]
-
-            extract_table = TableDefinition(table_name=table_name, columns=columns)
+        with Connection(endpoint=hyper.endpoint, database=path, create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
             connection.catalog.create_schema("Extract")
-            connection.catalog.create_table(extract_table)
-
-            with Inserter(connection, extract_table) as inserter:
-                for row in all_data:
-                    row_data = []
-                    for i, key in enumerate(current_keys):
-                        val = row.get(key, None)
-                        col_type = columns[i].type
-                        if val is None or val == "":
-                            row_data.append(None)
-                        elif col_type == SqlType.double():
-                            try:
-                                row_data.append(float(str(val).replace(',', '')))
-                            except Exception:
-                                row_data.append(0.0)
-                        elif col_type == SqlType.big_int():
-                            try:
-                                row_data.append(int(float(str(val).replace(',', ''))))
-                            except Exception:
-                                row_data.append(None)
-                        else:
-                            row_data.append(str(val))
-                    inserter.add_row(row_data)
+            connection.catalog.create_table(table)
+            with Inserter(connection, table) as inserter:
+                for row in rows:
+                    inserter.add_row([_convert(row.get(key), column.type) for key, column in zip(keys, columns)])
                 inserter.execute()
-
-    return hyper_filepath
+    return path

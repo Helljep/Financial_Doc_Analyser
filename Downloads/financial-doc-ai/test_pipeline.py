@@ -36,7 +36,7 @@ GEMINI_INVOICE = {
 def fake_gemini(monkeypatch):
     calls = []
 
-    def fake(contents, config, attempts=3):
+    def fake(contents, config, attempts=3, usage=None):
         calls.append(contents)
         return FakeResponse(GEMINI_INVOICE)
 

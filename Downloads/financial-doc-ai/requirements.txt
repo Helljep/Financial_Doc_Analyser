@@ -1,6 +1,7 @@
 streamlit
 google-genai
 pydantic
+pymupdf
 PyPDF2
 python-docx
 pandas
