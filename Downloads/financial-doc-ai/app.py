@@ -9,7 +9,7 @@ import streamlit as st
 import source_index
 from audit import canonical_json, generate_audit_hash, verify_ledger
 from hyper_export import create_hyper_extract
-from llm import generate_report
+from llm import generate_report, summary_failed
 from ocr import extract_financial_data
 from report import create_charts, create_pdf_report
 from validator import validate_line_items
@@ -68,7 +68,8 @@ def build_exports(report, extracted, doc_type, audit_payload, report_key):
         audit_hash = generate_audit_hash(audit_payload)
         status.update(label="Report ready", state="complete")
     st.session_state["artifacts"] = dict(insights_json=insights_json, pdf_path=pdf_path,
-                                         hyper_path=hyper_path, audit_hash=audit_hash)
+                                         hyper_path=hyper_path, audit_hash=audit_hash,
+                                         summary_failed=summary_failed(insights_json))
     st.session_state["report_key"] = report_key
 
 
@@ -101,6 +102,13 @@ def show_overview(report, extracted, insights_json):
                    f"{usage['output_tokens']:,} out.")
 
     st.divider()
+    if summary_failed(insights_json):
+        st.warning("Gemini couldn't write the summary this time, usually because it is busy. "
+                   "Everything else is unaffected.")
+        if st.button("Try the summary again"):
+            st.session_state.pop("report_key", None)     # forces a rebuild on the next run
+            st.rerun()
+        return
     try:
         insights = json.loads(insights_json)
     except ValueError:

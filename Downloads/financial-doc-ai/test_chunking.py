@@ -162,3 +162,17 @@ def test_huge_text_is_trimmed_but_keeps_both_ends():
     text = "START" + "z" * 500_000 + "END"
     out = llm.compact_text(text)
     assert len(out) < 61_000 and out.startswith("START") and out.endswith("END") and "omitted" in out
+
+
+def test_summary_retries_then_falls_back(monkeypatch):
+    calls = []
+
+    def always_busy(contents, config, attempts=3, usage=None):
+        calls.append(attempts)
+        raise RuntimeError("503 UNAVAILABLE")
+
+    monkeypatch.setattr(ocr, "_call_gemini", always_busy)
+    out = llm.generate_report({"valid_records": [], "anomalies": []}, "text")
+    assert calls == [5]                      # asked the retrying helper for five attempts
+    assert llm.summary_failed(out)
+    assert not llm.summary_failed('{"executive_summary": "All good."}')

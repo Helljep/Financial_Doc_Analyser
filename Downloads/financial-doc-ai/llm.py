@@ -4,7 +4,7 @@ from collections import Counter
 
 from pydantic import BaseModel
 
-from config import MODEL_NAME, get_client
+import ocr
 from validator import headline_amount
 
 # A 2,000-page document has thousands of rows, far more than fits in one prompt. Past these
@@ -21,6 +21,9 @@ SYSTEM_INSTRUCTION = (
     "anomalies, biggest differences) and give a short 'chart_title', 5 'chart_labels' (strings) "
     "and 5 'chart_values' (floats)."
 )
+
+
+FAILED_PREFIX = "The summary could not be generated"
 
 
 class ReportInsights(BaseModel):
@@ -79,25 +82,30 @@ def generate_report(validation_report: dict, raw_text: str, overall_reasoning: s
 
     try:
         from google.genai import types
-        response = get_client().models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTION,
-                response_mime_type="application/json",
-                response_schema=ReportInsights,
-                temperature=0.2,
-            ),
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_INSTRUCTION,
+            response_mime_type="application/json",
+            response_schema=ReportInsights,
+            temperature=0.2,
         )
-        return response.text
+        # Same retry and back-off as extraction: Gemini is often briefly overloaded.
+        return ocr._call_gemini(prompt, config, attempts=5).text
     except Exception as error:
         fallback = ReportInsights(
-            executive_summary=f"Could not generate AI insights: {error}",
-            trend_analysis="N/A",
-            risk_factors=["The AI call failed, so the data could not be cross-checked."],
-            recommended_actions=["Check the Gemini API key and quota."],
+            executive_summary=f"{FAILED_PREFIX} ({type(error).__name__}). The checks and exports are not affected.",
+            trend_analysis="",
+            risk_factors=[],
+            recommended_actions=["Try the summary again in a minute. If it keeps failing, check the API key and quota."],
             chart_title="No data",
             chart_labels=["Error"],
             chart_values=[0.0],
         )
         return fallback.model_dump_json()
+
+
+def summary_failed(insights_json: str) -> bool:
+    """True if generate_report gave back its placeholder instead of a real summary."""
+    try:
+        return json.loads(insights_json).get("executive_summary", "").startswith(FAILED_PREFIX)
+    except ValueError:
+        return True
