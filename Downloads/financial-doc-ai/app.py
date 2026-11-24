@@ -85,8 +85,8 @@ def show_overview(report, extracted, insights_json):
                         "whether the values were read correctly.")
     if recon:
         cols[3].metric("Items vs stated total", "Match" if recon["matches"] else f"Off by {recon['difference']:,.2f}",
-                       help=f"Line items add up to {recon['line_items_sum']:,.2f}; the document states "
-                            f"{recon['grand_total']:,.2f}. Tax or shipping can legitimately explain a gap.")
+                       help=f"Line items {recon['line_items_sum']:,.2f} + tax {recon['tax_total']:,.2f}; the document "
+                            f"states {recon['grand_total']:,.2f}. Shipping or a missed tax line can explain a gap.")
 
     for warning in extracted.get("extraction_warnings", []):
         st.warning(warning)

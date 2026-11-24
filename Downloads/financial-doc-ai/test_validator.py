@@ -153,3 +153,11 @@ def test_unknown_type_only_checks_duplicates():
     row = {"description": "Log line", "total": 3}
     r = run("unknown", [dict(row), dict(row), {"description": "Other", "total": 1}])
     assert len(r["anomalies"]) == 2 and len(r["valid_records"]) == 1
+
+
+def test_document_level_tax_is_part_of_the_reconciliation():
+    rows = [{"description": "Door", "qty": 2, "price": 14322.0, "total": 28644.0}]
+    r = run("invoice", rows, grand_total=33800.0, tax_total=5155.92)
+    assert r["reconciliation"]["matches"]           # 28644 + 5155.92 = 33799.92, rounded to 33800
+    r = run("invoice", rows, grand_total=33800.0)
+    assert not r["reconciliation"]["matches"]       # without the tax the gap shows

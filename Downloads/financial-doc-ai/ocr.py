@@ -70,6 +70,7 @@ class FinancialDocumentCompact(BaseModel):
     extraction_reasoning: str = Field(description="Brief overall reasoning for document classification.")
     vendor_or_entity_name: str | None = Field(description="The name of the vendor, business, or person on the document. Return 'N/A' if missing.")
     grand_total: float | None = Field(description="The final total amount of the document.")
+    tax_total: float | None = Field(default=None, description="Invoices only: total tax charged on the whole document (GST, VAT, sales tax), added on top of the line items. Null if none is shown.")
     opening_balance: float | None = Field(default=None, description="Bank statements only: balance before the first transaction.")
     closing_balance: float | None = Field(default=None, description="Bank statements only: balance after the last transaction.")
     document_type: DocType = Field(description="Must be one of the explicitly defined document types.", default=DocType.UNKNOWN)
@@ -87,6 +88,7 @@ SYSTEM_INSTRUCTION = (
     "Classify the document as 'invoice', 'tax_1040', 'insurance_claim', or 'bank_statement'. "
     "For 'records', construct a list of JSON objects representing table rows or logical line items. "
     "For invoices: include description, qty, price, discount, and total. "
+    "Put the tax charged on the whole invoice (GST, VAT) in tax_total, not in the line items. "
     "For tax_1040: include wages, interest, dividends, and total_income. "
     "For insurance_claim: include claim_amount, deductible, and covered_amount. "
     "For bank_statement: include date, description, debit, credit and the running balance for each "
@@ -338,12 +340,14 @@ def _merge(parts: list) -> dict:
     vendors = [p.get("vendor_or_entity_name") for p in parts
                if p.get("vendor_or_entity_name") and str(p["vendor_or_entity_name"]).strip().lower() not in ("n/a", "none", "null")]
     totals = [p.get("grand_total") for p in parts if p.get("grand_total")]
+    taxes = [p.get("tax_total") for p in parts if p.get("tax_total")]
     openings = [p.get("opening_balance") for p in parts if p.get("opening_balance") is not None]
     closings = [p.get("closing_balance") for p in parts if p.get("closing_balance") is not None]
     return {
         "document_type": Counter(types_seen).most_common(1)[0][0] if types_seen else "unknown",
         "vendor_or_entity_name": vendors[0] if vendors else "N/A",
         "grand_total": totals[-1] if totals else 0.0,           # the stated total usually comes last
+        "tax_total": taxes[-1] if taxes else None,
         "opening_balance": openings[0] if openings else None,   # and the opening balance first
         "closing_balance": closings[-1] if closings else None,
         "records": [r for p in parts for r in p.get("records", [])],
@@ -434,6 +438,7 @@ def extract_financial_data(file, on_progress=None):
             "type": doc_type,
             "vendor_or_entity_name": merged["vendor_or_entity_name"],
             "grand_total": merged["grand_total"],
+            "tax_total": merged["tax_total"],
             "opening_balance": merged["opening_balance"],
             "closing_balance": merged["closing_balance"],
             "text": text or "Text extracted via multimodal vision.",

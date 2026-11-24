@@ -19,6 +19,7 @@ PERCENT_FEE_RULES = {
 }
 FEE_TOLERANCE = Decimal("0.05")
 LINE_TOLERANCE = Decimal("0.50")
+ROUND_OFF_TOLERANCE = Decimal("1.00")
 BALANCE_TOLERANCE = Decimal("0.01")
 
 # A one-line invoice legitimately has price == total, so the "price is over half the
@@ -141,13 +142,17 @@ def _check_invoice(rows, doc):
                 problems.append(f"Math fail: {q}x{price} -{discount}% = {expected}, got {total}")
         results.append(problems)
 
-    # Compare the sum of the lines with the stated total. A gap isn't always an error
-    # (tax or shipping may not be listed as a line), so this is shown as information only.
+    # Compare the lines plus any document-level tax with the stated total. A gap isn't always
+    # an error (shipping may not be listed as a line), so this is shown as information only.
     if doc.grand_total > 0:
         lines_sum = sum((headline_amount(r) for r in rows if abs(headline_amount(r)) <= MAX_BOUND), Decimal("0"))
-        gap = lines_sum - doc.grand_total
-        doc.reconciliation = {"line_items_sum": float(lines_sum), "grand_total": float(doc.grand_total),
-                              "difference": float(gap), "matches": abs(gap) <= LINE_TOLERANCE}
+        tax = _optional(doc.extracted, "tax_total") or Decimal("0")
+        gap = lines_sum + tax - doc.grand_total
+        # Invoices round the final figure to the nearest unit, so allow for that when tax is added.
+        tolerance = ROUND_OFF_TOLERANCE if tax else LINE_TOLERANCE
+        doc.reconciliation = {"line_items_sum": float(lines_sum), "tax_total": float(tax),
+                              "grand_total": float(doc.grand_total), "difference": float(gap),
+                              "matches": abs(gap) <= tolerance}
     return results
 
 

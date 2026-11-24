@@ -14,6 +14,7 @@ Large documents are split into parts, read in parallel and merged, so a statemen
 ```bash
 pip install -r requirements.txt
 export GEMINI_API_KEY=your-key        # PowerShell: $env:GEMINI_API_KEY = "your-key"
+# optional: export GEMINI_MODEL=gemini-3.5-flash   (the default; change it if Google retires it)
 python -m streamlit run app.py
 ```
 
@@ -41,12 +42,14 @@ Run the tests with `python -m pytest`. `python make_huge_sample.py` builds a 2,0
 ## Limits
 
 - It can't promise a perfect read of every document. Gemini can misread a figure, and a wrong figure that still adds up passes the arithmetic. That is why flagged rows show the source page, and why you can edit anything.
+- Gemini can give slightly different answers for the same document on different runs. On one real invoice a line total came out as 1199.68 once and 1200.08 the next time. The total check and the source check are there to catch that.
+- When the scan has lost a line total, Gemini sometimes works it out from quantity and rate. The source check flags those rows as "not found in the source document".
 - "Checks passed" is the share of rows that passed the arithmetic. It is not a measure of how accurately the document was read.
 - Scanned PDFs and photos have no text to search, so they get no source view and no source check.
 - The free Gemini tier has a daily request limit. A 2,000-page document needs roughly 90 calls, so retries and waits are built in, but a very large file can still run into the limit.
 - The audit log shows tampering, it doesn't prevent it. Someone who can rewrite the file can rewrite the whole chain.
 - The Tableau extract needs the Hyper library to start. On some locked-down machines it can't, and the app says so instead of failing.
-- Not tested yet on a real 2,000-page document, only on the generated one.
+- Tested on a handful of real scanned-invoice texts and on a generated 2,000-page statement, but not yet on a real 2,000-page document.
 
 ## Roadmap
 

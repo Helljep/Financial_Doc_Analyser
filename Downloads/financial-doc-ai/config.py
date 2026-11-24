@@ -6,7 +6,9 @@ and a key is never stored in source control.
 """
 import os
 
-MODEL_NAME = "gemini-2.5-flash"
+# Google retires old models (2.5-flash stopped working for new keys), so the model is a
+# setting: set GEMINI_MODEL to switch without touching the code.
+MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 
 _client = None
 
